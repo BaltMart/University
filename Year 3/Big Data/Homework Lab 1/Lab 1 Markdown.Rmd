@@ -1,0 +1,226 @@
+---
+title: "Lab 1"
+author: "Student 2311826"
+date: "`r Sys.Date()`"
+output:
+pdf_document: default
+html_document: default
+---
+
+```{r setup, include=FALSE}
+# Seting up the environment and installing the needed libraries
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plm)
+library(lmtest)
+library(ggplot2)
+library(stargazer)
+library(ISLR2)
+library(MASS)
+library(boot)
+```
+
+## Task 3.1
+
+To interpret and understand the communication of a regression table, it is first important to understand dependent and independent variables and their units. Table 3.4 features one dependent variable: sales in units (thousands). There are also three dependent variables: TV, Radio and Newspapers, each representing advertising budgets in terms of dollars (thousands).
+
+Therefore, the null hypotheses are as follows: 
+ 1) Increasing the budget of TV ads will not impact the number of sales;
+ 2) Increasing the budget of radio ads will not impact the number of sales;
+ 3) Increasing the budget of newspaper ads not impact the number of sales.
+ 
+The p-values are as such, that leads me to make these conclusions:
+ 1) The p-value is so low that it is highly unlikely that the null hypothesis is correct and therefore increasing the budget of TV ads will impact the number of sales, the evidence suggests that an increase of the budget by a 1000 dollars for TV ads would yield 46 extra units sold;
+ 2) The p-value is so low that it is highly unlikely that the null hypothesis is correct and therefore increasing the budget of radio ads will impact the number of sales, the evidence suggests that an increase of the budget by a 1000 dollars for radio ads would yield 189 extra units sold;
+ 3) There is not enough evidence to reject the null hypothesis, therefore we cannot accept alternative. 
+ 
+## Task 3.8 
+# a)
+For this task I first loaded the usual libraries. Then, the library containing the ISLR data sets. 
+Before running any regressions, it if often a good idea to take a look at the data itself.
+
+```{r auto summary}
+summary(Auto)
+```
+
+After this, we can proceed to running a regression.
+```{r auto regression}
+r1 <- lm(mpg ~ horsepower, data = Auto) # Running the model of miles per gallon on horsepower
+summary(r1)
+```
+
+We immediately can clearly see that there exists a relationship between the predictor and the response variable. The coefficient of the predictor is highly statistically significant. This relationship is negative, meaning a higher predictor (horsepower) value is negatively correlated with the response variable (miles per gallon).
+
+If we want to predict mgp associated with horsepower of 98, we can do that with some R code.
+```{r regression predict}
+predict_data <- data.frame(horsepower = 98) # Putting the prediction input into a data frame
+
+predict(r1, newdata = predict_data, interval = "confidence") # Predicting with confidence intervals
+predict(r1, newdata = predict_data, interval = "prediction") # Predicting with prediction intervals
+```
+The confidence interval is rather narrow and represents where on average the fuel consumption of a car with 98 horsepower should lie, and it is from 23.97 to 24.96 miles per gallon, while prediction interval is much wider predicting a larger variability of any other car not yet observed in our sample with 98 horsepower. In this case the prediction of 95% that any new car would have miles per gallon between 14.81 to 34.12.
+
+# b)
+
+To plot the response and predictor variables with least squares regression line can be done with such code:
+
+```{r plot}
+plot(Auto$horsepower, Auto$mpg,
+     ylab = "Miles Per Gallon",
+     xlab = "Horsepower")
+abline(r1,lwd=3,col="red")
+```
+
+# c)
+
+Diagnostics are produced with the simple function.
+
+```{r diagnostics}
+plot(r1)
+```
+
+The Residuals vs Fitted plot suggests that our data suggest non-linearity, making a simple OLS regression likely a poor fit. Within the Q-Q plot, some values deviate from normality in residuals, while the Scale-location plot suggests that the variance is not constant in our data. All of these should be addressed with different tools to be able to better predict the mpg with horsepower. 
+
+## Task 5.8
+
+# a)
+
+Generating a simulated data set as described in the task:
+
+```{r simulating data}
+set.seed(1)
+x <- rnorm(100)
+y <- x - 2 * x^2 + rnorm(100)
+```
+
+In this data set the n is 100, the number of observations that we set by telling r to simulate 100 values of rnorm. The p in our case is 1 as we only have one 'predictor' in x.
+
+The model used to generate the data in equation form is: $y_i = x_i - 2x_i^2 + \varepsilon_i$ where $\varepsilon_i$ is normally distributed error term.
+
+# b)
+
+```{r scatterplot}
+plot(x, y) # Plotting the scatterplot
+```
+
+A quick glace at the data we can clearly see x being a random normally distributed sample withthe mean around 0. Also, the data seems to have a parabolic shape, suggesting, as it should given the $y_i$ function, non-linearity in terms of relationship between the predictor and the prediction.
+
+# c)
+
+```{r LOOCV}
+set.seed(25) # Setting the random seed 
+
+x <- rnorm(100) # Regenerating the x 
+y <- x - 2 * x^2 + rnorm(100) # Simulating the y
+
+df_xy.c <- data.frame(x = x, y = y) # Combining into the data set
+
+cv.error.c  <- rep(1, 4) # Preparing storage for the errors
+models.c <- list() # Preparing to store model results
+
+for (i in 1:4){
+  models.c[[i]] <- glm(y ~ poly(x, i), data = df_xy.c) # Running regressions of polynomial order i
+  cv.error.c[i] <- cv.glm(df_xy.c, models.c[[i]])$delta[1] # Calculating and storing the error
+}
+
+# Plotting the results
+plot(1:4, cv.error.c,
+     type = "b",
+     col = "green",
+     xlab = "Polynomial degree",
+     ylab = "LOOCV error",
+     main = "LOOCV errors of different degree polynomials",
+     xaxt = "n",
+     ylim = c(min(cv.error.c) * 0.95, max(cv.error.c) * 1.05))
+axis(1, at = 1:4)
+grid()
+``` 
+
+To help understand the graph here are the values of the of year polynomial fit LOOCV errors:
+```{r LOOCV errors}
+cv.error.c
+```
+The graph does not do too good of a job of showing a difference between models 2, 3 and 4, while it depicts the difference between the first model and others quite well. Nevertheless, using raw numbers we can see that the error is lowest on the second model.
+
+# d)
+
+Repeating the same as above, just with a different seed:
+```{r LOOCV2}
+set.seed(89448) # Setting the random seed 
+
+x <- rnorm(100) # Regenerating the x 
+y <- x - 2 * x^2 + rnorm(100) # Simulating the y
+
+df_xy.d <- data.frame(x = x, y = y) # Combining into the data set
+
+cv.error.d  <- rep(1, 4) # Preparing storage for the errors
+models.d <- list() # Preparing to store model results
+
+for (i in 1:4){
+  models.d[[i]] <- glm(y ~ poly(x, i), data = df_xy.d) # Running regressions of polynomial order i
+  cv.error.d[i] <- cv.glm(df_xy.d, models.d[[i]])$delta[1] # Calculating and storing the error
+}
+
+# Plotting the results
+plot(1:4, cv.error.d,
+     type = "b",
+     col = "blue",
+     xlab = "Polynomial degree",
+     ylab = "LOOCV error",
+     main = "LOOCV errors of different degree polynomials",
+     xaxt = "n",
+     ylim = c(min(cv.error.d) * 0.95, max(cv.error.d) * 1.05))
+axis(1, at = 1:4)
+grid()
+``` 
+```{r LOOCV errors2}
+cv.error.d
+```
+To compare the two simulations I will plot both graphs: 
+
+```{r LOOCV error comparison graph}
+plot(1:4, cv.error.c,
+     type = "b",
+     col = "green",
+     xlab = "Polynomial degree",
+     ylab = "LOOCV error",
+     main = "LOOCV errors of different degree polynomials",
+     xaxt = "n",
+ylim = c(min(c(cv.error.c, cv.error.d)), max(c(cv.error.c, cv.error.d))))
+axis(1, at = 1:4)
+grid()
+lines(1:4, cv.error.d, type = "b", col = "blue") # Adding the second simulation
+
+# Adding a legend for better readability
+legend("topright",
+       legend = c("seed = 25 (cv.error.c)", "seed = 89448 (cv.error.d)"),
+       col = c("green", "blue"))
+
+```
+
+Comparing these two simulations we can see that although the simulations yield different numbers due to different seeds, or levels of the values for the errors, the curve essentially looks the same. Wildly unreliable in the case of linear estimation, improving substantially with the second degree polynomial estimation, but then not improving when adding another degree to our prediction. Because the data generation process is the same, the error calculation method is the same, even with different numbers from different seeds, the results are the same.
+
+
+# e) 
+
+In both cases we can see that the second degree polynomial regression had the lowest LOOCV errors, which in line what we should expect. The reason is that we do know the true data generation process for Y, which we are predicting, which is the second degree polynomial. Adding additional predictors overfits and produces ever so slightly worse results, while not adding a quadratic element underfits. This problem can be foreseen by just looking at the scatterplot that I plotted earlier, which clearly shows a non-linear relationship between X and Y.
+
+# f) 
+To compare how our results of LOOCV error calculation compares to significance of predictors in regressions, here I will put out data below from saved models for comparison:
+
+```{r comparing to pvalues}
+# Printing out the coefficients and the p values to describe the statistical significance of them
+for(i in 1:4) {
+  cat(sprintf("\n=== Model %d (Degree %d) ===\n", i, i))
+  coef_summary <- summary(models.c[[i]])$coefficients 
+  print(coef_summary[, c("Estimate", "Pr(>|t|)")])
+}
+
+print(data.frame(Degree = 1:4, LOOCV_Error = cv.error.c)) # Printing out the LOOCV errors for easier comparison
+```
+
+With models 1 and 2, signifying the first two degrees of polynomials we can see that the predictors are statistically significant, with p-values very low. However, when we take a look models 3 and 4, where higher degree predictors are added, we see that in the model 3 predictor of $x^3$ is statistically insignificant with p-value above of most agreed values to consider a value statistically significant (the value is around of 0.252). The story is much the same in the model 3, where $x^3$ is again, statistically insignificant (meaning it is not relevant to predict the dependent variable). Also, here $x^4$ is added, also statistically insignificant with a p-value of around 0.755. In these two models the $x$ and $x^2$ remain statistically significant. 
+
+This means that these $x$ and $x^2$ are significant to predicting the Y value and model 2 is the best for this purpose. This conclusion agrees with the results we saw from LOOCV errors, where second degree polynomial model produces the lowest error.
+
+

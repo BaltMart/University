@@ -1,0 +1,189 @@
+---
+title: "Big Data Exam"
+author: "Student 2311826"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR2)
+library(tree)
+library(randomForest)
+library(BART)
+library(survival)
+set.seed(0128)
+```
+
+# 1. TRUE or FALSE:
+  1) False, bagging approach is used to reduce variance by averaging predictions, that should not lead to overfitting;
+  2) False, because odds are related to probability like this: p = odds/ (1+odds), so in our case the probability is p = 0.15/1.15 = 0.13, which is lower, not higher;
+  3) False, hierarchical clustering is an unsupervised method for grouping observations, not useful at all for causal questions;
+  4) False, since censoring is connected to "not having further mutations" then the mechanism is not independent from radiation, as radiation is what causes the mutations, or lack of them;
+  5) False, removing these variables could lead to omitted variable bias.
+  
+# 2. Choosing correct answers and justifying
+ 1) d, because out-of-the bag observations are those that are not used to fit a particular bagged tree, which then would follow that error made on this data are errors made on data not in training sample;
+ 2) b and d, because both of these models manae variance and bias tradeoff with a parameter, which other models here do not do.
+ 3) e, because PCA is essentially trying to orders components in order of most to least variance explanatory, none of the other options make sense here;
+ 4) b, c and d, since this is a causal question, causal methods need to be used, others do not play the part;
+ 5) c, because for grouping items based on their similarity, hierarchical clustering as an unsupervised method is best.
+ 
+# 3. Problems
+# Problem 1 
+
+a) For a given statement, right is true, left is false in this tree:
+```{r exam_1a, echo=FALSE}
+  knitr::include_graphics("C:/Users/martynas/Desktop/uni/Year 3/AUTUMN/Big Data Analysis/Homework Lab 2/1aexam.jpg")
+```
+
+b) Since we have two variables, age and monthly radiation they receive, interaction between these two is the deepest that the data scientist can do.
+
+c) My binary split tree suggests that the highest likelihood of mutation belongs to those receiving at least 70 muSv per month and aged higher than 9. While the lowest probability of mutation are of the youngest (below the age of 5) and least radiation receiving (less than 70). 
+
+d) No, that kind of split would require more than one split, it would cut across a group.
+
+e) No, not worth growing the tree at all, because it currently is able to fully divide the observations into correct boxes, any more splits would be overfitting.
+
+f) While we can sort of make the observation that the older you are and the more radiation you receive per month makes for a higher probability of mutation, the relationship is not quite smooth, so I don't think we could place points in such a way here, that a regression model would work better in this case.
+
+________________________________________________________________________________
+# Problem 2
+
+a) 
+
+```{r 2a}
+# I'll recreate the matrix in the task as R object
+Matrix <- matrix(c(0, 0.2, 0.6, 0.4, 0.8, 
+                   0.2, 0, 0.3, 0.5, 0.1,
+                   0.6, 0.3, 0, 0.6, 0.7,
+                   0.4, 0.5, 0.6, 0, 0.9,
+                   0.8, 0.1, 0.7, 0.9, 0), nrow = 5, byrow = TRUE)
+
+d <- as.dist(Matrix)
+
+# Using complete linkage and plotting the results
+hc_linked_comp <- hclust(d, method = "complete")
+plot(hc_linked_comp, main = "Complete Linkage Dendroram",
+     xlab= "Observation", ylab = "Height")
+# Also, adding the heights to the plot
+heights <- hc_linked_comp$height
+text(x = 1.5, y = heights[1] + 0.02, labels = heights[1], col = "red", cex = 0.9)
+text(x = 4.5, y = heights[2] + 0.02, labels = heights[2], col = "red", cex = 0.9)
+text(x = 3.5, y = heights[3] + 0.02, labels = heights[3], col = "red", cex = 0.9)
+text(x = 2.5, y = heights[4] - 0.02, labels = heights[4], col = "red", cex = 0.9)
+
+
+# Using single linkage and plotting the results
+hc_linked_single <- hclust(d, method = "single")
+plot(hc_linked_single, main = "Single Linkage Dendrogram",
+     xlab = "Observation", ylab = "Height")
+# Again, adding heights
+heights_single <- hc_linked_single$height
+text(x = 4, y = heights_single[1] + 0.01, labels = heights_single[1], col = "red", cex = 0.9)
+text(x = 3.5, y = heights_single[2] + 0.01, labels = heights_single[2], col = "red", cex = 0.9)
+text(x = 3, y = heights_single[3] + 0.01, labels = heights_single[3], col = "red", cex = 0.9)
+text(x = 1.5, y = heights_single[4] - 0.02, labels = heights_single[4], col = "red", cex = 0.9)
+```
+
+b) If the data scientist wanted to cut dendrograms into two parts, for complete linkage, one cluster would have 2 and 5, while the other cluster would have 3, 1 and 4. For single linkage one cluster would only consist of observation 4 and the other cluster would feature 3, 1, 2 and 5.
+ 
+c)
+ 
+```{r 2c}
+# Plotting the reverse of complete linkage
+dend_comp <- as.dendrogram(hc_linked_comp)
+dend_rev_comp <- rev(dend_comp)
+plot(dend_rev_comp, main = "Reversed Order Complete linkage dendrogram",
+     xlab = "Observation", ylab = "Height")
+# Adding the heights
+text(x = 4.5, y = heights[1] + 0.02, labels = heights[1], col = "red", cex = 0.9)
+text(x = 1.5, y = heights[2] + 0.02, labels = heights[2], col = "red", cex = 0.9)
+text(x = 2.5, y = heights[3] + 0.02, labels = heights[3], col = "red", cex = 0.9)
+text(x = 3.5, y = heights[4] - 0.02, labels = heights[4], col = "red", cex = 0.9)
+
+# Plotting the reverse of single linkage
+dend_single <- as.dendrogram(hc_linked_single)
+dend_rev_sing <- rev(dend_single)
+plot(dend_rev_sing, main = "Reversed Order Single linkage dendrogram",
+     xlab = "Observation", ylab = "Height")
+# Adding the heights
+text(x = 1, y = heights_single[1] + 0.01, labels = heights_single[1], col = "red", cex = 0.9)
+text(x = 2, y = heights_single[2] + 0.01, labels = heights_single[2], col = "red", cex = 0.9)
+text(x = 3, y = heights_single[3] + 0.01, labels = heights_single[3], col = "red", cex = 0.9)
+text(x = 4, y = heights_single[4] - 0.02, labels = heights_single[4], col = "red", cex = 0.9)
+```
+
+_________________________________________________________________________________
+# Problem 3
+
+a) 
+
+```{r 3a}
+# For this task too, I will use R
+# First, I will create a points matrix as given in the task
+
+Points <- matrix(c(1, 32,
+                   2, 16,
+                   4, 8,
+                   8, 4,
+                   16, 2,
+                   32, 1), ncol = 2, byrow = TRUE)
+
+# Calculating distances
+distance_euc <- dist(Points, method = "euclidean")
+# Creating dendrogram linkages
+hc_dist_euc_single <- hclust(distance_euc, method = "single")
+hc_dist_euc_complete <- hclust(distance_euc, method = "complete")
+hc_dist_euc_average <- hclust(distance_euc, method = "average")
+
+# Plotting them all
+plot(hc_dist_euc_single, main = "Single Linkage Dendroram",
+     xlab= "Observation", ylab = "Height")
+plot(hc_dist_euc_complete, main = "Complete Linkage Dendroram",
+     xlab= "Observation", ylab = "Height")
+plot(hc_dist_euc_average, main = "Average Linkage Dendroram",
+     xlab= "Observation", ylab = "Height")
+```
+
+b) To find out for which linkage methods the dendrograms will differ I will use code. But before doing that, my guess is that the dendrograms will be different for all linkage methods because the data scientists dissimilarity function is very different to the Euclidean distance function.
+```{r 3b}
+# Creating a function to calculate the data scientists dissimilarity function
+dissimilarity_function <- function(points) {
+  n <- nrow(points)
+  matrix <- matrix(0, n, n)
+  for (i in 1:(n-1)) {
+    for (j in (i+1):n) {
+      diff1 <- abs(points[i, 1] - points[j, 1])
+      diff2 <- abs(points[i, 2] - points[j, 2])
+      matrix[i, j] <- max(diff1, diff2) / min(diff1, diff2)
+      matrix[j, i] <- matrix[i, j]
+    }
+  }
+  return(as.dist(matrix))
+}
+
+# Calculating distances
+distance_scientist <- dissimilarity_function(Points)
+
+# Creating dendrogram linkages
+hc_dist_scien_single <- hclust(distance_scientist, method = "single")
+hc_dist_scien_complete <- hclust(distance_scientist, method = "complete")
+hc_dist_scien_average <- hclust(distance_scientist, method = "average")
+
+# Plotting them all
+plot(hc_dist_scien_single, main = "Single Linkage Dendroram",
+     xlab= "Observation", ylab = "Height")
+plot(hc_dist_scien_complete, main = "Complete Linkage Dendroram",
+     xlab= "Observation", ylab = "Height")
+plot(hc_dist_scien_average, main = "Average Linkage Dendroram",
+     xlab= "Observation", ylab = "Height")
+```
+
+Observing the results, I can see that in fact, the dendrograms are different for all linkage methods. Using this distance function it is also the case that complete and average linkage methods produce the same dendrograms, while they were different using the Euclidean distance.
+
+
+
+
+ 
+ 

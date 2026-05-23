@@ -1,0 +1,373 @@
+---
+title: "Big Data Homework 2"
+author: "Student 2311826"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR2)
+library(tree)
+library(randomForest)
+library(BART)
+library(survival)
+set.seed(0128)
+```
+Note: I set my seed together with my libraries, therefore, it is hidden. However, the seed I use is 0128.
+
+## Task 12.2
+```{r Task_12.2Main, echo=FALSE}
+knitr::include_graphics("C:/Users/martynas/Desktop/uni/Year 3/AUTUMN/Big Data Analysis/Homework Lab 2/12.2main.png")
+```
+
+```{r 12.2}
+# I'll recreate the matrix in the task as R object
+Matrix <- matrix(c(0, 0.3, 0.4, 0.7,
+                   0.3, 0, 0.5, 0.8,
+                   0.4, 0.5, 0, 0.45,
+                   0.7, 0.8, 0.45, 0), nrow = 4, byrow = TRUE)
+
+d <- as.dist(Matrix)
+```
+
+# a) 
+On the basis of this dissimilarity matrix, sketch the dendrogram
+that results from hierarchically clustering these four observations
+using complete linkage. Be sure to indicate on the plot the
+height at which each fusion occurs, as well as the observations
+corresponding to each leaf in the dendrogram.
+
+```{r 12.2a}
+# Using complete linkage and plotting the results
+hc_linked_comp <- hclust(d, method = "complete")
+plot(hc_linked_comp, main = "Complete Linkage Dendroram",
+     xlab= "Observation", ylab = "Height")
+# Also, adding the heights to the plot
+heights <- hc_linked_comp$height
+text(x = 1.5, y = heights[1] + 0.02, labels = heights[1], col = "red", cex = 0.9)
+text(x = 3.5, y = heights[2] + 0.02, labels = heights[2], col = "red", cex = 0.9)
+text(x = 2.5, y = heights[3] + 0.02, labels = heights[3], col = "red", cex = 0.9)
+```
+
+From this data we see three fusion points, each at different heights. Observations 1 and 2 being most similar at the point of fusion. 
+
+# b) 
+Repeat (a), this time using single linkage clustering.
+
+```{r 12.2b}
+# Using singe linkage method
+hc_linked_single <- hclust(d, method = "single")
+plot(hc_linked_single, main = "Single Linkage Dendrogram",
+     xlab = "Observation", ylab = "Height")
+# Again, adding heights
+heights_single <- hc_linked_single$height
+text(x = 3.5, y = heights_single[1] + 0.01, labels = heights_single[1], col = "red", cex = 0.9)
+text(x = 3.5, y = heights_single[2] + 0.01, labels = heights_single[2], col = "red", cex = 0.9)
+text(x = 2.5, y = heights_single[3] - 0.02, labels = heights_single[3], col = "red", cex = 0.9)
+```
+
+Using single linkage method seems to have reduced dissimilarities between groups at fusion points. Here, highest linkage point is 0.45 as opposed to 0.8 in part (a).
+
+# c) 
+Suppose that we cut the dendrogram obtained in (a) such that
+two clusters result. Which observations are in each cluster?
+
+Observing the dendrogram above in (a), if we cut it into two parts, the first cluster will have observations 1 and 2, and the second cluster has observations 3 and 4.
+
+# d) 
+Suppose that we cut the dendrogram obtained in (b) such that
+two clusters result. Which observations are in each cluster?
+
+Cutting the dendogram obtained in part (b), the clusters will look different. Cutting at the top height we will have two unequal clusters. The first cluster would have one observation: 4. And the second cluster would have observations 1, 2 and 3.
+
+# e) 
+It is mentioned in this chapter that at each fusion in the dendrogram,
+the position of the two clusters being fused can be
+swapped without changing the meaning of the dendrogram. Draw
+a dendrogram that is equivalent to the dendrogram in (a), for
+which two or more of the leaves are repositioned, but for which
+the meaning of the dendrogram is the same.
+
+```{r 12.2e}
+dend <- as.dendrogram(hc_linked_comp)
+dend_rev <- reorder(dend, c(4,3,2,1))
+plot(dend_rev, main = "Reversed Order: 4-3-2-1",
+     xlab = "Observation", ylab = "Height")
+```
+
+Just looking at this, it is a reversed of the original, however, the heights of fusion points remains the same for the same observations, so, it still has the same meaning as the original dedrogram.
+
+## Task 8.8
+```{r 8.8main, echo=FALSE}
+knitr::include_graphics("C:/Users/martynas/Desktop/uni/Year 3/AUTUMN/Big Data Analysis/Homework Lab 2/8.8main.png")
+```
+
+# a)
+Split the data set into a training set and a test set.
+
+```{r 8.8a}
+attach(Carseats)
+
+# Assigning training set indexes
+train_ind <- sample(1:nrow(Carseats), nrow(Carseats)*0.8)
+
+# Separating the data into training set and test set
+train_set <- Carseats[train_ind,]
+test_set <- Carseats[-train_ind,]
+```
+
+# b)
+Fit a regression tree to the training set. Plot the tree, and interpret
+the results. What test MSE do you obtain?
+
+```{r 8.8b1}
+r1_tree <- tree(Sales ~ ., data = train_set)
+summary(r1_tree)
+```
+
+```{r 8.8b2}
+par(mfrow = c(1, 1))
+plot(r1_tree)
+text(r1_tree, pretty = 4, cex = 0.6)
+title("Regression Tree for Carseats Sales")
+```
+
+The tree does not look efficient enough as Shelve locations and price turn up more than once in the tree meaning that we have to consider the same variable more than once.
+
+To obtain test MSE, I first predict using the test set and then use that to compute the error:
+```{r 8.8b3}
+r1_pred <- predict(r1_tree, newdata = test_set)
+r1_test_mse <- mean((r1_pred - test_set$Sales)^2)
+table(r1_test_mse)
+```
+
+Above is the test MSE I obtained. It does not seem too high, but it is also not a very low one. Without context of other methods and their results, it is difficult to judge if we can do better.
+
+# c)
+Use cross-validation in order to determine the optimal level of
+tree complexity. Does pruning the tree improve the test MSE?
+
+I first run cross-validation and then I plot it.
+```{r 8.8c}
+# CV
+cv_tree <- cv.tree(r1_tree)
+
+# Plotting
+par(mfrow = c(1, 2))
+plot(cv_tree$size, cv_tree$dev, type = "b", 
+     xlab = "Tree Size (Number of Terminal Nodes)", 
+     ylab = "Cross-Validation Deviance",
+     main = "CV Deviance vs Tree Size")
+```
+
+Looking at he graph it does not immediately jump out at me, that we should somehow agressively prune the tree. It seems that the full tree is rather close to being optimal. However, I will now check what is the optimal level of tree complexity and what is the MSE of the pruned tree.
+
+```{r 8.8c2}
+# Finding the optimal tree size
+optimal_tree_size <- cv_tree$size[which.min(cv_tree$dev)]
+
+# Pruning the tree
+pruned_tree <- prune.tree(r1_tree, best = optimal_tree_size)
+
+# Ploting the pruned tree
+par(mfrow = c(1, 1))
+plot(pruned_tree)
+text(pruned_tree, pretty = 4, cex = 0.6)
+title("Pruned Regression Tree for Carseats Sales")
+```
+
+This new tree removes one branch from the previous tree.
+
+```{r 8.8c3}
+# Re-predicting with Pruned tree model
+pruned_pred <- predict(pruned_tree, newdata = test_set)
+# Calculating MSE
+pruned_mse <- mean((pruned_pred-test_set$Sales)^2)
+# Creating a table to compare the MSE results
+results <- matrix(c(r1_test_mse, pruned_mse), ncol = 1)
+rownames(results) <- c("Unpruned Tree", "Pruned Tree")
+colnames(results) <- "Test MSE"
+print(results)
+```
+
+This result actually shows that the pruned tree performs worse than the full tree. Therefore, I would conclude the unpruned tree is better for prediction than the pruned tree. 
+
+# d)
+Use the bagging approach in order to analyze this data. What
+test MSE do you obtain? Use the feature_importance_ values to
+determine which variables are most important.
+
+```{r 8.8d1}
+# Estimating the model
+bagging_model <- randomForest(Sales ~ ., data = train_set, mtry = 10, importance = TRUE)
+# Predicting and calculating the MSE
+bagging_pred <- predict(bagging_model, newdata = test_set)
+bagging_mse <- mean((bagging_pred-test_set$Sales)^2)
+bagging_mse
+```
+
+Immediately it is obvious, that bagging method gives way more accurate predictions that either of the tree models. MSE being 2.55 is a clear improvement over MSE's of the tree models of over 4.
+
+```{r 8.8d2}
+# Extracting variable importance
+bagging_importance <- importance(bagging_model)
+bagging_importance
+```
+
+There are two variables that are clearly most important for predicting sales: Shelve Location and Price. A lot less important, but not minor things are: Competition price, Advertising and Age, but other things do not seem to matter all that much.
+
+# e)
+Use random forests to analyze this data. What test MSE do
+you obtain? Use the feature_importance_ values to determine
+which variables are most important. Describe the effect of m, the
+number of variables considered at each split, on the error rate
+obtained.
+
+```{r 8.8e1}
+# Preparing to rerun the model several times
+mtry_values <- c(1, 2, 3, 4, 5, 6, 7, 8, 9)
+results_rf_df <-data.frame(mtry = mtry_values, Test_MSE = NA) 
+
+#Running the loop
+for (i in 1:length(mtry_values)){
+  m <- mtry_values[i]
+  # The model
+  rf_model <- randomForest(Sales ~ ., data = train_set, mtry = m, importance = TRUE)
+  
+  # Calculating MSE
+  rf_pred <- predict(rf_model, newdata = test_set)
+  rf_mse <- mean((rf_pred-test_set$Sales)^2)
+  
+  # Storing
+  results_rf_df[i, "Test_MSE"] <- rf_mse
+}
+results_rf_df
+```
+
+The results above show that the improvement to the MSE is not linear with inclusion of more variables at each split. It improves until the 8th variables and then starts to increase again. I don't include the m = 10 version because I already have this MSE because it was the bagging approach.
+
+```{r 8.8e2}
+# I will rerun the model with standard choise for random forest models of m = sqrt(p), which for us it around 3
+rf_model <- randomForest(Sales ~ ., data = train_set, mtry = 3, importance = TRUE)
+# Extracting importance
+rf_importance <- importance(rf_model)
+rf_importance
+```
+
+Similarly as in bagging approach, the the most important variables are shelving locations and prices. Somewhat important are competition price, advertising and age. Other variables are not important in this model.
+
+# f) 
+Now analyze the data using BART, and report your results.
+
+```{r 8.8f1}
+# Preparing data for the model
+x_train <- model.matrix(Sales ~ ., data = train_set)[,-1]
+y_train <- train_set$Sales
+x_test <- model.matrix(Sales ~ ., data = test_set)[,-1]
+y_test <- test_set$Sales
+
+# Running the model
+bart_model <- BART::gbart(x.train = x_train, y.train = y_train, x.test = x_test)
+
+# Computing the MSE
+bart_MSE <- mean((y_test - bart_model$yhat.test.mean)^2)
+bart_MSE
+```
+
+The MSE (1.285) from this method is lowest of all used in the exercise, which to me suggests that it is best able to predict Sales.
+
+## Task 11.11
+```{r 11.11main, echo=FALSE}
+knitr::include_graphics("C:/Users/martynas/Desktop/uni/Year 3/AUTUMN/Big Data Analysis/Homework Lab 2/11.11main.png")
+```
+
+# a)
+Create two groups of observations. In Group 1, X < 2, whereas
+in Group 2, X >= 2. Plot the Kaplan-Meier survival curves corresponding
+to the two groups. Be sure to label the curves so that
+it is clear which curve corresponds to which group. By eye, does
+there appear to be a difference between the two groups’ survival
+curves?
+
+```{r 11.11a}
+# I could not find a dataset that might be used here, so I am constructing it from the table itself
+y <- c(26.5,37.2,57.3,90.8,20.2,89.8)
+delta <- c(1,1,1,0,0,0)
+x <- c(0.1,11,-0.3,2.8,1.8,0.4)
+
+# Creating a data frame
+df_cox <- data.frame(
+  Time = y,
+  Censoring_ind = delta,
+  Covariate = x
+)
+
+# Creating groups
+df_cox$group <- ifelse(df_cox$Covariate < 2, "Group 1 (X < 2)", "Group 2 (X >= 2)")
+
+# Fitting the Kaplan-Meier
+km_m1 <- survfit(Surv(Time, Censoring_ind) ~ group, data = df_cox)
+
+# Plotting the results
+par(mfrow = c(1, 1), mar = c(5, 5, 4, 2))
+plot(km_m1, 
+     xlab = "Time", 
+     ylab = "Survival Probability",
+     main = "Kaplan-Meier Survival Curves\nGroup 1 (X < 2) vs Group 2 (X >= 2)",
+     col = c("blue", "red"),
+     lwd = 3,
+     mark.time = TRUE,
+     cex.lab = 1.2,
+     cex.main = 1.3)
+
+legend("topright", 
+       legend = c("Group 1 (X < 2)", "Group 2 (X >= 2)"),
+       col = c("blue", "red"),
+       lwd = 3,
+       bty = "n",
+       cex = 1.1)
+grid()
+```
+
+Visually there seems to be a difference in the probability of survival plateau. That is, one group (Group 1) has a higher probability of survival in the long run, but otherwise, some advantage is not immediatelly apparent just by looking at the plot.
+
+# b)
+Fit Cox’s proportional hazards model, using the group indicator
+as a covariate. What is the estimated coefficient? Write a sentence
+providing the interpretation of this coefficient, in terms
+of the hazard or the instantaneous probability of the event. Is
+there evidence that the true coefficient value is non-zero?
+
+```{r 11.11b}
+# Creating a binary group indicator
+df_cox$indicator <- ifelse(df_cox$Covariate >= 2, 1, 0)
+
+# Fitting the model
+cox_m1 <- coxph(Surv(Time, Censoring_ind) ~ indicator, data = df_cox)
+summary(cox_m1)
+```
+
+The estimated coefficient is -0.3401, and the exponent of it (or so called hazard) is 0.71, which means, that if you are in group 2, you have only 71% the risk of instantaneous event happening. However, the p-value is as high as 0.783, meaning that the result lacks statistical significance.
+
+# c)
+Recall from Section 11.5.2 that in the case of a single binary
+covariate, the log-rank test statistic should be identical to the
+score statistic for the Cox model. Conduct a log-rank test to determine
+whether there is a difference between the survival curves
+for the two groups. How does the p-value for the log-rank test
+statistic compare to the p-value for the score statistic for the
+Cox model from (b)?
+
+```{r 11.11c}
+# Log rank test
+logrank <- survdiff(Surv(Time, Censoring_ind) ~ indicator, data = df_cox)
+logrank_pvalue <- 1 - pchisq(logrank$chisq, df = 1)
+logrank_pvalue
+```
+
+The Cox model p-value was 0.783 and log rank test p-value is 0.7821768, which, although not identical, I would say, is enough to conclude, that the results from both are in effect identical. The difference might be due to rounding, or some other minor detail. In fact, the Cox model summary gives a rounded logrank test 0.8, so, if we did the same "trick" we would have identical results.
+
+
+
+
